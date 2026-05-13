@@ -52,26 +52,37 @@ namespace mini_ros
 
         // =============================================
         // POST TASK
+        // Trả về false nếu executor đã stopped.
         // =============================================
 
-        void post(const Task &task)
+        bool post(const Task &task)
         {
+            if (!running_)
+            {
+                return false;
+            }
+
             tasks_.push(task);
+
+            return true;
         }
 
         // =============================================
         // STOP
+        // FIX: Dùng tasks_.shutdown() thay vì push
+        // N empty sentinel tasks. Cách cũ có race khi
+        // số sentinel ít hơn số worker đang chờ.
         // =============================================
 
         void stop()
         {
-            running_ = false;
-
-            // wake all workers
-            for (size_t i = 0; i < workers_.size(); ++i)
+            if (!running_.exchange(false))
             {
-                tasks_.push([]() {});
+                return; // đã stop rồi
             }
+
+            // Wake tất cả worker đang block tại waitAndPop()
+            tasks_.shutdown();
 
             for (auto &worker : workers_)
             {
@@ -82,27 +93,53 @@ namespace mini_ros
             }
 
             workers_.clear();
+
+            std::cout
+                << "[Executor] Stopped"
+                << std::endl;
+        }
+
+        bool isRunning() const
+        {
+            return running_;
+        }
+
+        ~Executor()
+        {
+            stop();
         }
 
     private:
         Executor() = default;
 
-        void workerLoop(size_t id)
+        // =============================================
+        // WORKER LOOP
+        // FIX: waitAndPop() trả về optional, thoát
+        // khi nhận nullopt (tức là shutdown).
+        // =============================================
+
+        void workerLoop(size_t /*id*/)
         {
             while (running_)
             {
-                auto task = tasks_.waitAndPop();
+                auto maybeTask = tasks_.waitAndPop();
 
-                task();
+                if (!maybeTask.has_value())
+                {
+                    // Queue đã shutdown → thoát
+                    break;
+                }
+
+                (*maybeTask)();
             }
         }
 
     private:
-        ThreadSafeQueue<Task> tasks_;
+        ThreadSafeQueue<Task>   tasks_;
 
         std::vector<std::thread> workers_;
 
-        std::atomic<bool> running_{false};
+        std::atomic<bool>       running_{ false };
     };
 
 }

@@ -42,6 +42,17 @@ namespace mini_ros
             services_[name] = wrapper;
         }
 
+        // ---------------------------------------------------
+        // Xóa service khỏi registry (dùng khi Service bị destroy)
+        // ---------------------------------------------------
+
+        void unregisterService(const std::string &name)
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+
+            services_.erase(name);
+        }
+
         template <typename Req, typename Res>
         std::shared_ptr<Res> call(
             const std::string &name,
@@ -70,6 +81,13 @@ namespace mini_ros
             return response;
         }
 
+        bool hasService(const std::string &name) const
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+
+            return services_.count(name) > 0;
+        }
+
     private:
         using ServiceCallback =
             std::function<void(
@@ -81,7 +99,7 @@ namespace mini_ros
             ServiceCallback>
             services_;
 
-        std::mutex mutex_;
+        mutable std::mutex mutex_;
     };
 
 }

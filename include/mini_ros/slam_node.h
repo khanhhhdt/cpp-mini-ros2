@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <mutex>
 
 #include "mini_ros/node.h"
 #include "mini_ros/messages.h"
@@ -16,12 +17,14 @@ namespace mini_ros
         explicit SlamNode(Node &node)
         {
             // ==========================================
-            // CALLBACK GROUP
+            // FIX: Dùng MutuallyExclusive thay vì Reentrant.
+            // onScan() ghi vào currentPose_ và map_ —
+            // không an toàn khi chạy song song nhiều callback.
             // ==========================================
 
             group_ =
                 node.createCallbackGroup(
-                    CallbackGroupType::Reentrant);
+                    CallbackGroupType::MutuallyExclusive);
 
             // ==========================================
             // PUBLISHERS
@@ -83,6 +86,8 @@ namespace mini_ros
 
         // ==============================================
         // PROCESS SCAN
+        // Chạy dưới MutuallyExclusive group nên
+        // currentPose_ và map_ được bảo vệ.
         // ==============================================
 
         void onScan(
@@ -94,11 +99,10 @@ namespace mini_ros
                 << "[SLAM] processing scan..."
                 << std::endl;
 
-            // fake motion
-
+            // Fake motion update
             currentPose_.x += 0.05f;
-
             currentPose_.theta += 0.01f;
+            currentPose_.header.timestamp = nowNs();
 
             updateMap(scan);
 
@@ -107,24 +111,22 @@ namespace mini_ros
             // ==========================================
 
             auto poseMsg =
-                std::make_shared<Pose2D>();
+                std::make_shared<Pose2D>(currentPose_);
 
-            *poseMsg =
-                currentPose_;
-
-            posePublisher_->publish(
-                poseMsg);
+            posePublisher_->publish(poseMsg);
 
             // ==========================================
             // PUBLISH MAP
             // ==========================================
 
-            mapPublisher_->publish(
-                map_);
+            mapPublisher_->publish(map_);
         }
 
         // ==============================================
         // SIMPLE OCCUPANCY UPDATE
+        // FIX: Thay magic number 10.0f bằng 1.0f/resolution
+        // để đúng với map resolution = 0.05m/cell
+        // (1 meter = 20 cells khi resolution=0.05)
         // ==============================================
 
         void updateMap(
@@ -132,46 +134,45 @@ namespace mini_ros
                 const LaserScan>
                 scan)
         {
-            int centerX =
+            const int centerX =
                 map_->width / 2;
 
-            int centerY =
+            const int centerY =
                 map_->height / 2;
+
+            // FIX: Dùng resolution thay vì hardcode
+            const float metersToCell =
+                1.0f / map_->resolution;
 
             float angle =
                 scan->angleMin;
 
-            for (const auto &range :
-                 scan->ranges)
+            for (const auto &range : scan->ranges)
             {
-                int hitX =
+                const int hitX =
                     centerX +
                     static_cast<int>(
                         std::cos(angle) *
-                        range * 10.0f);
+                        range *
+                        metersToCell);
 
-                int hitY =
+                const int hitY =
                     centerY +
                     static_cast<int>(
                         std::sin(angle) *
-                        range * 10.0f);
+                        range *
+                        metersToCell);
 
                 if (hitX >= 0 &&
                     hitX < map_->width &&
                     hitY >= 0 &&
                     hitY < map_->height)
                 {
-                    int index =
-                        hitY *
-                            map_->width +
-                        hitX;
-
-                    map_->data[index] =
+                    map_->data[hitY * map_->width + hitX] =
                         100;
                 }
 
-                angle +=
-                    scan->angleIncrement;
+                angle += scan->angleIncrement;
             }
         }
 
@@ -186,14 +187,11 @@ namespace mini_ros
             Publisher<OccupancyGrid>>
             mapPublisher_;
 
-        SubscriptionPtr
-            scanSubscription_;
+        SubscriptionPtr scanSubscription_;
 
         Pose2D currentPose_;
 
-        std::shared_ptr<
-            OccupancyGrid>
-            map_;
+        std::shared_ptr<OccupancyGrid> map_;
     };
 
 }

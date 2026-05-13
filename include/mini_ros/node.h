@@ -4,12 +4,12 @@
 #include <memory>
 #include <utility>
 #include <string>
+#include <vector>
 
 #include "topic_manager.h"
 #include "publisher.h"
 #include "subscription.h"
 #include "callback_group.h"
-
 #include "service.h"
 #include "client.h"
 #include "service_manager.h"
@@ -25,6 +25,11 @@ namespace mini_ros
         {
         }
 
+        const std::string &name() const
+        {
+            return name_;
+        }
+
         // ==================================================
         // CREATE PUBLISHER
         // ==================================================
@@ -37,7 +42,8 @@ namespace mini_ros
         }
 
         // ==================================================
-        // GENERIC CALLBACK VERSION
+        // CREATE SUBSCRIBER — generic callback version
+        // (lambda, functor, free function)
         // ==================================================
 
         template <
@@ -80,7 +86,8 @@ namespace mini_ros
         }
 
         // ==================================================
-        // MEMBER FUNCTION SAFE VERSION
+        // CREATE SUBSCRIBER — member function safe version
+        // Dùng weak_ptr để tránh dangling pointer khi object bị destroy
         // ==================================================
 
         template <
@@ -121,17 +128,27 @@ namespace mini_ros
             return subscription;
         }
 
+        // ==================================================
+        // CREATE CALLBACK GROUP
+        // ==================================================
+
         CallbackGroupPtr createCallbackGroup(
             CallbackGroupType type)
         {
             return std::make_shared<CallbackGroup>(type);
         }
 
+        // ==================================================
+        // CREATE SERVICE
+        // FIX: Trả về ServicePtr thay vì void để caller có
+        // thể quản lý lifetime. Service tự unregister khi bị destroy.
+        // ==================================================
+
         template <
             typename Req,
             typename Res,
             typename Callback>
-        void createService(
+        std::shared_ptr<Service<Req, Res>> createService(
             const std::string &name,
             Callback &&callback)
         {
@@ -139,7 +156,13 @@ namespace mini_ros
                 .registerService<Req, Res>(
                     name,
                     std::forward<Callback>(callback));
+
+            return std::make_shared<Service<Req, Res>>(name);
         }
+
+        // ==================================================
+        // CREATE CLIENT
+        // ==================================================
 
         template <typename Req, typename Res>
         Client<Req, Res> createClient(

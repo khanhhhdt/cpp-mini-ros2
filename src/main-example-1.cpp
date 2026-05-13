@@ -116,12 +116,10 @@ int main()
     // ==================================================
 
     auto scanPublisher =
-        node.createPublisher<LaserScan>(
-            "/scan");
+        node.createPublisher<LaserScan>("/scan");
 
     auto posePublisher =
-        node.createPublisher<Pose2D>(
-            "/pose");
+        node.createPublisher<Pose2D>("/pose");
 
     // ==================================================
     // SIMPLE LAMBDA
@@ -205,7 +203,7 @@ int main()
             mapper);
 
     // ==================================================
-    // TEMP OBJECT TEST
+    // TEMP OBJECT TEST — kiểm tra weak_ptr safety
     // ==================================================
 
     {
@@ -229,27 +227,29 @@ int main()
 
     // ==================================================
     // SERVICE SERVER
+    // FIX: Giữ serviceHandle để service tồn tại đúng lifetime.
+    // Khi serviceHandle bị destroy, service tự unregister.
     // ==================================================
 
-    node.createService<
-        AddTwoIntsRequest,
-        AddTwoIntsResponse>(
-        "/add_two_ints",
-        [](std::shared_ptr<const AddTwoIntsRequest> req,
-           std::shared_ptr<AddTwoIntsResponse> res)
-        {
-            res->sum =
-                req->a + req->b;
+    auto serviceHandle =
+        node.createService<
+            AddTwoIntsRequest,
+            AddTwoIntsResponse>(
+            "/add_two_ints",
+            [](std::shared_ptr<const AddTwoIntsRequest> req,
+               std::shared_ptr<AddTwoIntsResponse> res)
+            {
+                res->sum = req->a + req->b;
 
-            std::cout
-                << "[SERVICE] "
-                << req->a
-                << " + "
-                << req->b
-                << " = "
-                << res->sum
-                << std::endl;
-        });
+                std::cout
+                    << "[SERVICE] "
+                    << req->a
+                    << " + "
+                    << req->b
+                    << " = "
+                    << res->sum
+                    << std::endl;
+            });
 
     // ==================================================
     // CLIENT
@@ -261,19 +261,31 @@ int main()
             AddTwoIntsResponse>(
             "/add_two_ints");
 
+    // Chờ service sẵn sàng (optional, service đã register ở trên)
+    if (!client.waitForService(std::chrono::milliseconds(1000)))
+    {
+        std::cerr
+            << "[CLIENT] Service not available!"
+            << std::endl;
+
+        return 1;
+    }
+
     auto request =
         std::make_shared<AddTwoIntsRequest>();
 
     request->a = 10;
     request->b = 20;
 
-    auto response =
-        client.call(request);
+    auto response = client.call(request);
 
-    std::cout
-        << "[CLIENT RESPONSE] "
-        << response->sum
-        << std::endl;
+    if (response)
+    {
+        std::cout
+            << "[CLIENT RESPONSE] "
+            << response->sum
+            << std::endl;
+    }
 
     // ==================================================
     // TIMER : SCAN PUBLISH
@@ -286,12 +298,8 @@ int main()
             auto scan =
                 std::make_shared<LaserScan>();
 
-            scan->ranges =
-                {
-                    1.0f,
-                    2.0f,
-                    3.0f,
-                    4.0f};
+            scan->header.timestamp = nowNs();
+            scan->ranges           = { 1.0f, 2.0f, 3.0f, 4.0f };
 
             std::cout
                 << "\n[PUBLISH] /scan"
@@ -311,9 +319,10 @@ int main()
             auto pose =
                 std::make_shared<Pose2D>();
 
-            pose->x = 1.2f;
-            pose->y = 2.5f;
-            pose->theta = 0.7f;
+            pose->header.timestamp = nowNs();
+            pose->x                = 1.2f;
+            pose->y                = 2.5f;
+            pose->theta            = 0.7f;
 
             std::cout
                 << "\n[PUBLISH] /pose"

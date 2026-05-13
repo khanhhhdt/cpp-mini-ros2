@@ -7,7 +7,6 @@
 #include "mini_ros/executor.h"
 #include "mini_ros/timer.h"
 #include "mini_ros/callback_group.h"
-
 #include "mini_ros/slam_node.h"
 
 using namespace mini_ros;
@@ -130,9 +129,7 @@ int main()
     // ==============================================
 
     auto scanPublisher =
-        node.createPublisher<
-            LaserScan>(
-            "/scan");
+        node.createPublisher<LaserScan>("/scan");
 
     // ==============================================
     // FAKE LIDAR TIMER
@@ -143,35 +140,29 @@ int main()
         [&]()
         {
             auto scan =
-                std::make_shared<
-                    LaserScan>();
+                std::make_shared<LaserScan>();
 
-            constexpr int count =
-                360;
+            scan->header.timestamp = nowNs();
+            scan->header.frameId   = "lidar";
 
-            scan->ranges.resize(
-                count);
+            constexpr int count = 360;
 
-            for (int i = 0;
-                 i < count;
-                 ++i)
+            scan->ranges.resize(count);
+
+            for (int i = 0; i < count; ++i)
             {
-                float angle =
-                    i * 0.017f;
+                float angle = i * 0.017f;
 
                 scan->ranges[i] =
                     5.0f +
-                    std::sin(
-                        angle * 4.0f) *
-                        2.0f;
+                    std::sin(angle * 4.0f) * 2.0f;
             }
 
             std::cout
                 << "\n[LIDAR] publish scan"
                 << std::endl;
 
-            scanPublisher.publish(
-                scan);
+            scanPublisher.publish(scan);
         });
 
     // ==============================================

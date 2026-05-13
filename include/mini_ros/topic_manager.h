@@ -47,7 +47,15 @@ namespace mini_ros
                     std::static_pointer_cast<const T>(data));
             };
 
-            subscribers_[topic].push_back(wrapper);
+            subscribers_[topic].push_back(
+                { subscription, wrapper });
+
+            // -----------------------------------------------
+            // FIX: Cleanup dead entries khi có subscriber mới
+            // đăng ký vào topic này. Tránh vector phình vô hạn.
+            // -----------------------------------------------
+
+            pruneDeadSubscribers(topic);
         }
 
         // ==================================================
@@ -63,7 +71,7 @@ namespace mini_ros
 
             {
                 // ------------------------------------------
-                // LOCK ONLY FOR COPYING CALLBACK LIST
+                // LOCK CHỈ ĐỂ COPY DANH SÁCH CALLBACK
                 // ------------------------------------------
 
                 std::lock_guard<std::mutex> lock(mutex_);
@@ -75,11 +83,18 @@ namespace mini_ros
                     return;
                 }
 
-                callbacks = it->second;
+                // Chỉ lấy callback của subscriber còn alive
+                for (auto &entry : it->second)
+                {
+                    if (entry.subscription->alive())
+                    {
+                        callbacks.push_back(entry.callback);
+                    }
+                }
             }
 
             // ----------------------------------------------
-            // EXECUTE OUTSIDE LOCK
+            // EXECUTE NGOÀI LOCK
             // ----------------------------------------------
 
             for (auto &callback : callbacks)
@@ -92,17 +107,89 @@ namespace mini_ros
             }
         }
 
+        // ==================================================
+        // PRUNE (có thể gọi thủ công nếu muốn)
+        // ==================================================
+
+        void pruneAllTopics()
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+
+            for (auto &[topic, _] : subscribers_)
+            {
+                pruneDeadSubscribers(topic);
+            }
+        }
+
+        size_t subscriberCount(const std::string &topic) const
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+
+            auto it = subscribers_.find(topic);
+
+            if (it == subscribers_.end())
+            {
+                return 0;
+            }
+
+            size_t count = 0;
+
+            for (const auto &entry : it->second)
+            {
+                if (entry.subscription->alive())
+                {
+                    ++count;
+                }
+            }
+
+            return count;
+        }
+
+    private:
+
+        // ==================================================
+        // INTERNAL: phải được gọi khi đang giữ mutex_
+        // ==================================================
+
+        void pruneDeadSubscribers(const std::string &topic)
+        {
+            auto it = subscribers_.find(topic);
+
+            if (it == subscribers_.end())
+            {
+                return;
+            }
+
+            auto &vec = it->second;
+
+            vec.erase(
+                std::remove_if(
+                    vec.begin(),
+                    vec.end(),
+                    [](const SubscriberEntry &e)
+                    {
+                        return !e.subscription->alive();
+                    }),
+                vec.end());
+        }
+
     private:
         using Callback =
             std::function<
                 void(std::shared_ptr<const void>)>;
 
+        struct SubscriberEntry
+        {
+            SubscriptionPtr subscription;
+            Callback        callback;
+        };
+
         std::unordered_map<
             std::string,
-            std::vector<Callback>>
+            std::vector<SubscriberEntry>>
             subscribers_;
 
-        std::mutex mutex_;
+        mutable std::mutex mutex_;
     };
 
 }

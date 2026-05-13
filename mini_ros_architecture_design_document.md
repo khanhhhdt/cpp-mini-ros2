@@ -508,17 +508,17 @@ Responsible for:
 
 # 9. Current Features
 
-| Feature | Status |
-|---|---|
-| Publish / Subscribe | Implemented |
-| Multi-thread Executor | Implemented |
-| Callback Groups | Implemented |
-| Services / Clients | Implemented |
-| Timers | Implemented |
-| Shared_ptr Messaging | Implemented |
+| Feature                 | Status      |
+| ----------------------- | ----------- |
+| Publish / Subscribe     | Implemented |
+| Multi-thread Executor   | Implemented |
+| Callback Groups         | Implemented |
+| Services / Clients      | Implemented |
+| Timers                  | Implemented |
+| Shared_ptr Messaging    | Implemented |
 | Lifetime-safe Callbacks | Implemented |
-| SLAM Simulation | Implemented |
-| Qt-ready Architecture | Implemented |
+| SLAM Simulation         | Implemented |
+| Qt-ready Architecture   | Implemented |
 
 ---
 
@@ -601,4 +601,3 @@ The project serves as:
 - a SLAM experimentation runtime
 - a concurrent systems engineering project
 - a Qt robotics integration platform
-
