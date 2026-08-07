@@ -2,7 +2,9 @@
 
 namespace mini_ros
 {
-
+    /**
+     * Example of service
+     */
     struct AddTwoIntsRequest
     {
         int a;

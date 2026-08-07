@@ -15,12 +15,9 @@ namespace mini_ros
 
     inline uint64_t nowNs()
     {
-        return static_cast<uint64_t>(
-            std::chrono::duration_cast<
-                std::chrono::nanoseconds>(
-                std::chrono::steady_clock::now()
-                    .time_since_epoch())
-                .count());
+        return static_cast<uint64_t>(std::chrono::duration_cast<
+                                         std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch())
+                                         .count());
     }
 
     // ===========================================================
@@ -29,7 +26,7 @@ namespace mini_ros
 
     struct Header
     {
-        uint64_t    timestamp = 0;   // nanoseconds, dùng nowNs()
+        uint64_t timestamp = 0; // nanoseconds, dùng nowNs()
 
         std::string frameId;
     };
@@ -44,11 +41,11 @@ namespace mini_ros
 
         std::vector<float> ranges;
 
-        float angleMin       = -1.57f;
+        float angleMin = -1.57f;
 
-        float angleMax       =  1.57f;
+        float angleMax = 1.57f;
 
-        float angleIncrement =  0.01f;
+        float angleIncrement = 0.01f;
     };
 
     // ===========================================================
@@ -59,9 +56,9 @@ namespace mini_ros
     {
         Header header;
 
-        float x     = 0.0f;
+        float x = 0.0f;
 
-        float y     = 0.0f;
+        float y = 0.0f;
 
         float theta = 0.0f;
     };
@@ -74,13 +71,13 @@ namespace mini_ros
     {
         Header header;
 
-        int   width      = 0;
+        int width = 0;
 
-        int   height     = 0;
+        int height = 0;
 
-        float resolution = 0.05f;  // meters per cell
+        float resolution = 0.05f; // meters per cell
 
-        std::vector<int8_t> data;  // -1=unknown, 0=free, 100=occupied
+        std::vector<int8_t> data; // -1=unknown, 0=free, 100=occupied
     };
 
 }

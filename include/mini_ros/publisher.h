@@ -7,7 +7,10 @@
 
 namespace mini_ros
 {
-
+    /**
+     * @brief A publisher for sending messages on a specific topic.
+     * @tparam T The type of message to publish.
+     */
     template <typename T>
     class Publisher
     {
@@ -17,17 +20,13 @@ namespace mini_ros
         {
         }
 
-        // ==================================================
-        // ZERO COPY PUBLISH
-        // ==================================================
-
-        void publish(
-            std::shared_ptr<const T> message)
+        /**
+         * @brief Publish a message to the topic.
+         * @param message The message to publish.
+         */
+        void publish(std::shared_ptr<const T> message)
         {
-            TopicManager::instance()
-                .publish<T>(
-                    topic_,
-                    message);
+            TopicManager::instance().publish<T>(topic_, message);
         }
 
     private:

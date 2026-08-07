@@ -10,7 +10,6 @@
 
 namespace mini_ros
 {
-
     class Executor
     {
     public:
@@ -21,11 +20,10 @@ namespace mini_ros
             return executor;
         }
 
-        // =============================================
-        // START THREAD POOL
-        // =============================================
-
-        void start(size_t threadCount = std::thread::hardware_concurrency())
+        /*
+         * Start the thread pool with the specified number of threads.
+         */
+        void start(size_t threadCount = 10)
         {
             if (threadCount == 0)
             {
@@ -36,25 +34,20 @@ namespace mini_ros
 
             for (size_t i = 0; i < threadCount; ++i)
             {
-                workers_.emplace_back(
-                    [this, i]()
-                    {
-                        workerLoop(i);
-                    });
+                workers_.emplace_back([this, i]()
+                                      { workerLoop(i); });
             }
 
-            std::cout
-                << "[Executor] Started with "
-                << threadCount
-                << " threads"
-                << std::endl;
+            std::cout << "[Executor] Started with "
+                      << threadCount
+                      << " threads"
+                      << std::endl;
         }
 
-        // =============================================
-        // POST TASK
-        // Trả về false nếu executor đã stopped.
-        // =============================================
-
+        /**
+         * @brief Add a task to the executor's queue. The task will be executed by one of the worker threads.
+         * @retval true if executor is running, otherwise return false.
+         */
         bool post(const Task &task)
         {
             if (!running_)
@@ -67,13 +60,9 @@ namespace mini_ros
             return true;
         }
 
-        // =============================================
-        // STOP
-        // FIX: Dùng tasks_.shutdown() thay vì push
-        // N empty sentinel tasks. Cách cũ có race khi
-        // số sentinel ít hơn số worker đang chờ.
-        // =============================================
-
+        /**
+         * Stop the executor and wait for all worker threads to finish.
+         */
         void stop()
         {
             if (!running_.exchange(false))
@@ -94,9 +83,7 @@ namespace mini_ros
 
             workers_.clear();
 
-            std::cout
-                << "[Executor] Stopped"
-                << std::endl;
+            std::cout << "[Executor] Stopped" << std::endl;
         }
 
         bool isRunning() const
@@ -112,12 +99,10 @@ namespace mini_ros
     private:
         Executor() = default;
 
-        // =============================================
-        // WORKER LOOP
-        // FIX: waitAndPop() trả về optional, thoát
-        // khi nhận nullopt (tức là shutdown).
-        // =============================================
-
+        /**
+         * Worker thread loop.
+         * Each worker thread continuously waits for tasks and executes them.
+         */
         void workerLoop(size_t /*id*/)
         {
             while (running_)
@@ -135,11 +120,9 @@ namespace mini_ros
         }
 
     private:
-        ThreadSafeQueue<Task>   tasks_;
-
+        ThreadSafeQueue<Task> tasks_;
         std::vector<std::thread> workers_;
-
-        std::atomic<bool>       running_{ false };
+        std::atomic<bool> running_{false};
     };
 
 }

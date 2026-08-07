@@ -19,39 +19,27 @@ namespace mini_ros
         {
         }
 
-        // ==================================================
-        // SYNCHRONOUS CALL
-        // Trả về nullptr nếu service chưa được đăng ký.
-        // ==================================================
-
-        std::shared_ptr<Res> call(
-            std::shared_ptr<const Req> request)
+        /**
+         * @brief Synchronous execute the request.
+         * @return shared pointer to the response. nullptr if service if service not yet registered.
+         */
+        std::shared_ptr<Res> call(std::shared_ptr<const Req> request)
         {
-            return ServiceManager::instance()
-                .call<Req, Res>(
-                    name_,
-                    request);
+            return ServiceManager::instance().call<Req, Res>(name_, request);
         }
 
-        // ==================================================
-        // WAIT FOR SERVICE
-        // Block cho đến khi service sẵn sàng hoặc timeout.
-        // Trả về true nếu service available.
-        // ==================================================
-
-        bool waitForService(
-            std::chrono::milliseconds timeout =
-                std::chrono::milliseconds(5000),
-            std::chrono::milliseconds pollInterval =
-                std::chrono::milliseconds(50))
+        /**
+         * @brief Blocking wait for a service to register.
+         * @return true if service has been registered. false if service has not been registered.
+         */
+        bool waitForService(std::chrono::milliseconds timeout = std::chrono::milliseconds(5000),
+                            std::chrono::milliseconds pollInterval = std::chrono::milliseconds(50))
         {
-            auto deadline =
-                std::chrono::steady_clock::now() + timeout;
+            auto deadline = std::chrono::steady_clock::now() + timeout;
 
             while (std::chrono::steady_clock::now() < deadline)
             {
-                if (ServiceManager::instance()
-                        .hasService(name_))
+                if (ServiceManager::instance().hasService(name_))
                 {
                     return true;
                 }
@@ -62,12 +50,17 @@ namespace mini_ros
             return false;
         }
 
+        /**
+         * @brief Check any service that available for this client
+         */
         bool serviceAvailable() const
         {
-            return ServiceManager::instance()
-                .hasService(name_);
+            return ServiceManager::instance().hasService(name_);
         }
 
+        /**
+         * @brief get the client name
+         */
         const std::string &name() const
         {
             return name_;

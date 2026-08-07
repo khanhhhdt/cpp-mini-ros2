@@ -8,15 +8,14 @@ namespace mini_ros
 
     enum class CallbackGroupType
     {
-        MutuallyExclusive,  // Tại một thời điểm chỉ có 1 callback chạy
-        Reentrant           // Nhiều callback có thể chạy song song
+        MutuallyExclusive, // Tại một thời điểm chỉ có 1 callback chạy
+        Reentrant          // Nhiều callback có thể chạy song song
     };
 
     class CallbackGroup
     {
     public:
-        explicit CallbackGroup(
-            CallbackGroupType type)
+        explicit CallbackGroup(CallbackGroupType type)
             : type_(type)
         {
         }
@@ -32,12 +31,11 @@ namespace mini_ros
         }
 
     private:
-        CallbackGroupType   type_;
+        CallbackGroupType type_;
 
-        std::mutex          mutex_;
+        std::mutex mutex_;
     };
 
-    using CallbackGroupPtr =
-        std::shared_ptr<CallbackGroup>;
+    using CallbackGroupPtr = std::shared_ptr<CallbackGroup>;
 
 }

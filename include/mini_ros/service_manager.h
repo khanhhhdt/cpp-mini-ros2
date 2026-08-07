@@ -8,7 +8,9 @@
 
 namespace mini_ros
 {
-
+    /**
+     * @brief Manage and execute the service callback
+     */
     class ServiceManager
     {
     public:
@@ -20,32 +22,26 @@ namespace mini_ros
         }
 
         template <typename Req, typename Res>
-        void registerService(
-            const std::string &name,
-            std::function<void(
-                std::shared_ptr<const Req>,
-                std::shared_ptr<Res>)>
-                callback)
+        void registerService(const std::string &name,
+                             std::function<void(std::shared_ptr<const Req>, std::shared_ptr<Res>)> callback)
         {
             std::lock_guard<std::mutex> lock(mutex_);
 
-            auto wrapper =
-                [callback](
-                    std::shared_ptr<const void> req,
-                    std::shared_ptr<void> res)
+            auto wrapper = [callback](std::shared_ptr<const void> req,
+                                      std::shared_ptr<void> res)
             {
-                callback(
-                    std::static_pointer_cast<const Req>(req),
-                    std::static_pointer_cast<Res>(res));
+                callback(std::static_pointer_cast<const Req>(req),
+                         std::static_pointer_cast<Res>(res));
             };
 
             services_[name] = wrapper;
         }
 
-        // ---------------------------------------------------
-        // Xóa service khỏi registry (dùng khi Service bị destroy)
-        // ---------------------------------------------------
-
+        /**
+         * @brief Unregister the service when the service is destryed
+         * @param name Service's name
+         * @retval none
+         */
         void unregisterService(const std::string &name)
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -53,10 +49,14 @@ namespace mini_ros
             services_.erase(name);
         }
 
+        /**
+         * @brief Execute a specific service by it name
+         * @param name service name
+         * @param request supply the request parameter
+         * @retval Res pointer that execute in the callback
+         */
         template <typename Req, typename Res>
-        std::shared_ptr<Res> call(
-            const std::string &name,
-            std::shared_ptr<const Req> request)
+        std::shared_ptr<Res> call(const std::string &name, std::shared_ptr<const Req> request)
         {
             ServiceCallback callback;
 
@@ -73,14 +73,17 @@ namespace mini_ros
                 callback = it->second;
             }
 
-            auto response =
-                std::make_shared<Res>();
+            auto response = std::make_shared<Res>();
 
             callback(request, response);
 
             return response;
         }
 
+        /**
+         * @brief Check a service exist in the service manager
+         * @param name name of the service
+         */
         bool hasService(const std::string &name) const
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -89,15 +92,10 @@ namespace mini_ros
         }
 
     private:
-        using ServiceCallback =
-            std::function<void(
-                std::shared_ptr<const void>,
-                std::shared_ptr<void>)>;
+        using ServiceCallback = std::function<void(std::shared_ptr<const void>,
+                                                   std::shared_ptr<void>)>;
 
-        std::unordered_map<
-            std::string,
-            ServiceCallback>
-            services_;
+        std::unordered_map<std::string, ServiceCallback> services_;
 
         mutable std::mutex mutex_;
     };

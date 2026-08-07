@@ -11,6 +11,8 @@
 namespace mini_ros
 {
 
+    // Example SLAM node that subscribes to LaserScan messages,
+    // updates a simple occupancy grid map, and publishes the robot's pose and the map.
     class SlamNode
     {
     public:
@@ -21,42 +23,26 @@ namespace mini_ros
             // onScan() ghi vào currentPose_ và map_ —
             // không an toàn khi chạy song song nhiều callback.
             // ==========================================
-
-            group_ =
-                node.createCallbackGroup(
-                    CallbackGroupType::MutuallyExclusive);
+            group_ = node.createCallbackGroup(CallbackGroupType::MutuallyExclusive);
 
             // ==========================================
             // PUBLISHERS
             // ==========================================
 
-            posePublisher_ =
-                std::make_shared<
-                    Publisher<Pose2D>>(
-                    node.createPublisher<Pose2D>(
-                        "/pose"));
+            posePublisher_ = std::make_shared<Publisher<Pose2D>>(node.createPublisher<Pose2D>("/pose"));
 
-            mapPublisher_ =
-                std::make_shared<
-                    Publisher<OccupancyGrid>>(
-                    node.createPublisher<
-                        OccupancyGrid>(
-                        "/map"));
+            mapPublisher_ = std::make_shared<Publisher<OccupancyGrid>>(node.createPublisher<OccupancyGrid>("/map"));
 
             // ==========================================
             // SUBSCRIBER
             // ==========================================
 
-            scanSubscription_ =
-                node.createSubscriber<LaserScan>(
-                    "/scan",
-                    group_,
-                    [this](std::shared_ptr<
-                           const LaserScan>
-                               scan)
-                    {
-                        onScan(scan);
-                    });
+            scanSubscription_ = node.createSubscriber<LaserScan>("/scan",
+                                                                 group_,
+                                                                 [this](std::shared_ptr<const LaserScan> scan)
+                                                                 {
+                                                                     onScan(scan);
+                                                                 });
 
             createMap();
         }
@@ -68,20 +54,11 @@ namespace mini_ros
 
         void createMap()
         {
-            map_ =
-                std::make_shared<
-                    OccupancyGrid>();
-
+            map_ = std::make_shared<OccupancyGrid>();
             map_->width = 100;
-
             map_->height = 100;
-
             map_->resolution = 0.05f;
-
-            map_->data.resize(
-                map_->width *
-                    map_->height,
-                -1);
+            map_->data.resize(map_->width * map_->height, -1);
         }
 
         // ==============================================
@@ -90,14 +67,10 @@ namespace mini_ros
         // currentPose_ và map_ được bảo vệ.
         // ==============================================
 
-        void onScan(
-            std::shared_ptr<
-                const LaserScan>
-                scan)
+        void onScan(std::shared_ptr<const LaserScan> scan)
         {
-            std::cout
-                << "[SLAM] processing scan..."
-                << std::endl;
+            std::cout << "[SLAM] processing scan..."
+                      << std::endl;
 
             // Fake motion update
             currentPose_.x += 0.05f;
@@ -110,8 +83,7 @@ namespace mini_ros
             // PUBLISH POSE
             // ==========================================
 
-            auto poseMsg =
-                std::make_shared<Pose2D>(currentPose_);
+            auto poseMsg = std::make_shared<Pose2D>(currentPose_);
 
             posePublisher_->publish(poseMsg);
 
@@ -129,47 +101,28 @@ namespace mini_ros
         // (1 meter = 20 cells khi resolution=0.05)
         // ==============================================
 
-        void updateMap(
-            std::shared_ptr<
-                const LaserScan>
-                scan)
+        void updateMap(std::shared_ptr<const LaserScan> scan)
         {
-            const int centerX =
-                map_->width / 2;
+            const int centerX = map_->width / 2;
 
-            const int centerY =
-                map_->height / 2;
+            const int centerY = map_->height / 2;
 
             // FIX: Dùng resolution thay vì hardcode
-            const float metersToCell =
-                1.0f / map_->resolution;
+            const float metersToCell = 1.0f / map_->resolution;
 
-            float angle =
-                scan->angleMin;
+            float angle = scan->angleMin;
 
             for (const auto &range : scan->ranges)
             {
-                const int hitX =
-                    centerX +
-                    static_cast<int>(
-                        std::cos(angle) *
-                        range *
-                        metersToCell);
-
-                const int hitY =
-                    centerY +
-                    static_cast<int>(
-                        std::sin(angle) *
-                        range *
-                        metersToCell);
+                const int hitX = centerX + static_cast<int>(std::cos(angle) * range * metersToCell);
+                const int hitY = centerY + static_cast<int>(std::sin(angle) * range * metersToCell);
 
                 if (hitX >= 0 &&
                     hitX < map_->width &&
                     hitY >= 0 &&
                     hitY < map_->height)
                 {
-                    map_->data[hitY * map_->width + hitX] =
-                        100;
+                    map_->data[hitY * map_->width + hitX] = 100;
                 }
 
                 angle += scan->angleIncrement;
@@ -179,13 +132,9 @@ namespace mini_ros
     private:
         CallbackGroupPtr group_;
 
-        std::shared_ptr<
-            Publisher<Pose2D>>
-            posePublisher_;
+        std::shared_ptr<Publisher<Pose2D>> posePublisher_;
 
-        std::shared_ptr<
-            Publisher<OccupancyGrid>>
-            mapPublisher_;
+        std::shared_ptr<Publisher<OccupancyGrid>> mapPublisher_;
 
         SubscriptionPtr scanSubscription_;
 

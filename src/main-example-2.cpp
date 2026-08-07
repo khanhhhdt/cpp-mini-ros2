@@ -13,6 +13,89 @@
 using namespace mini_ros;
 
 // ======================================================
+// VISUALIZATION NODE
+// ======================================================
+
+class VisualizationNode
+{
+public:
+    explicit VisualizationNode(
+        Node &node)
+    {
+        group_ =
+            node.createCallbackGroup(
+                CallbackGroupType::Reentrant);
+
+        // ==========================================
+        // POSE SUB
+        // ==========================================
+
+        poseSub_ =
+            node.createSubscriber<Pose2D>(
+                "/pose",
+                group_,
+                [this](std::shared_ptr<
+                       const Pose2D>
+                           pose)
+                {
+                    onPose(pose);
+                });
+
+        // ==========================================
+        // MAP SUB
+        // ==========================================
+
+        mapSub_ =
+            node.createSubscriber<
+                OccupancyGrid>(
+                "/map",
+                group_,
+                [this](std::shared_ptr<
+                       const OccupancyGrid>
+                           map)
+                {
+                    onMap(map);
+                });
+    }
+
+private:
+    void onPose(
+        std::shared_ptr<
+            const Pose2D>
+            pose)
+    {
+        std::cout
+            << "[VIS] pose = "
+            << pose->x
+            << ", "
+            << pose->y
+            << ", "
+            << pose->theta
+            << std::endl;
+    }
+
+    void onMap(
+        std::shared_ptr<
+            const OccupancyGrid>
+            map)
+    {
+        std::cout
+            << "[VIS] map updated : "
+            << map->width
+            << " x "
+            << map->height
+            << std::endl;
+    }
+
+private:
+    CallbackGroupPtr group_;
+
+    SubscriptionPtr poseSub_;
+
+    SubscriptionPtr mapSub_;
+};
+
+// ======================================================
 // MAIN
 // ======================================================
 
@@ -46,7 +129,8 @@ int main()
     // LIDAR PUBLISHER
     // ==============================================
 
-    auto scanPublisher = node.createPublisher<LaserScan>("/scan");
+    auto scanPublisher =
+        node.createPublisher<LaserScan>("/scan");
 
     // ==============================================
     // FAKE LIDAR TIMER
@@ -56,7 +140,8 @@ int main()
         std::chrono::milliseconds(100),
         [&]()
         {
-            auto scan = std::make_shared<LaserScan>();
+            auto scan =
+                std::make_shared<LaserScan>();
 
             scan->header.timestamp = nowNs();
             scan->header.frameId = "lidar";
@@ -74,8 +159,9 @@ int main()
                     std::sin(angle * 4.0f) * 2.0f;
             }
 
-            std::cout << "\n[LIDAR] publish scan"
-                      << std::endl;
+            std::cout
+                << "\n[LIDAR] publish scan"
+                << std::endl;
 
             scanPublisher.publish(scan);
         });

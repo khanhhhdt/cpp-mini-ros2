@@ -28,7 +28,5 @@ namespace mini_ros
         std::atomic<bool> alive_;
     };
 
-    using SubscriptionPtr =
-        std::shared_ptr<Subscription>;
-
+    using SubscriptionPtr = std::shared_ptr<Subscription>;
 }

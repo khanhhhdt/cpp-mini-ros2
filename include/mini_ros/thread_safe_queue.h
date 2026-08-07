@@ -7,21 +7,10 @@
 
 namespace mini_ros
 {
-
-    // ===========================================================
-    // FIX: Thêm shutdown() và tryPop() để Executor có thể stop
-    // sạch mà không bị deadlock khi worker đang block tại wait().
-    // ===========================================================
-
     template <typename T>
     class ThreadSafeQueue
     {
     public:
-
-        // -----------------------------------------------------------
-        // Push item. Nếu queue đã shutdown, bỏ qua silently.
-        // -----------------------------------------------------------
-
         void push(const T &value)
         {
             {
@@ -38,21 +27,12 @@ namespace mini_ros
             condition_.notify_one();
         }
 
-        // -----------------------------------------------------------
-        // Block cho đến khi có item hoặc queue bị shutdown.
-        // Trả về std::nullopt khi shutdown để worker thoát sạch.
-        // -----------------------------------------------------------
-
         std::optional<T> waitAndPop()
         {
             std::unique_lock<std::mutex> lock(mutex_);
 
-            condition_.wait(
-                lock,
-                [this]()
-                {
-                    return !queue_.empty() || shutdown_;
-                });
+            condition_.wait(lock, [this]()
+                            { return !queue_.empty() || shutdown_; });
 
             if (queue_.empty())
             {
@@ -66,10 +46,6 @@ namespace mini_ros
 
             return value;
         }
-
-        // -----------------------------------------------------------
-        // Non-blocking pop. Trả về nullopt nếu rỗng.
-        // -----------------------------------------------------------
 
         std::optional<T> tryPop()
         {
@@ -86,10 +62,6 @@ namespace mini_ros
 
             return value;
         }
-
-        // -----------------------------------------------------------
-        // Đánh dấu shutdown và wake tất cả worker đang chờ.
-        // -----------------------------------------------------------
 
         void shutdown()
         {
@@ -112,18 +84,14 @@ namespace mini_ros
         size_t size() const
         {
             std::lock_guard<std::mutex> lock(mutex_);
-
             return queue_.size();
         }
 
     private:
-        std::queue<T>           queue_;
-
-        mutable std::mutex      mutex_;
-
+        std::queue<T> queue_;
+        mutable std::mutex mutex_;
         std::condition_variable condition_;
-
-        bool                    shutdown_{ false };
+        bool shutdown_{false};
     };
 
 }
